@@ -228,7 +228,7 @@ class ManualRegistry
         $found = [];
         $exclude = (array) ($this->options['exclude'] ?? []);
         foreach ($this->discover as $pattern) {
-            foreach (glob(rtrim((string) $pattern, '/'), \GLOB_ONLYDIR | \GLOB_BRACE) ?: [] as $dir) {
+            foreach (glob(rtrim((string) $pattern, '/'), \GLOB_ONLYDIR | (\defined('GLOB_BRACE') ? \GLOB_BRACE : 0)) ?: [] as $dir) {
                 if (!is_file($dir.'/composer.json') && !is_file($dir.'/package.json')) {
                     continue;
                 }

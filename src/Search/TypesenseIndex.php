@@ -105,6 +105,7 @@ class TypesenseIndex
     public function search(string $query, array $targets, int $limit = 20): ?SearchResult
     {
         $hits = [];
+        $order = [];
         $found = 0;
 
         foreach (array_chunk($targets, self::BATCH) as $batch) {
@@ -133,6 +134,9 @@ class TypesenseIndex
                 $found += (int) ($result['found'] ?? \count($result['hits']));
                 foreach ($result['hits'] as $hit) {
                     $document = $hit['document'] ?? [];
+                    // text_match is a 64-bit integer whose low bits carry the field's
+                    // weight: as a float it loses them, and a title no longer outranks the text.
+                    $order[] = [(int) ($hit['text_match'] ?? 0), -(int) ($document['rank'] ?? 0)];
                     $hits[] = new SearchHit(
                         manual: $manual->getKey(),
                         version: $version->name,
@@ -141,16 +145,19 @@ class TypesenseIndex
                         section: $document['section'] ?? null,
                         anchor: $document['anchor'] ?? null,
                         snippet: self::snippet($hit),
-                        score: (float) ($hit['text_match'] ?? 0) - (float) ($document['rank'] ?? 0),
+                        score: (float) ($hit['text_match'] ?? 0),
                         label: $manual->label,
                     );
                 }
             }
         }
 
-        usort($hits, static fn (SearchHit $a, SearchHit $b): int => [$b->score, $a->manual, $a->path] <=> [$a->score, $b->manual, $b->path]);
+        // The best match first, a page before its sections, then by manual: across collections.
+        $keys = array_keys($hits);
+        usort($keys, static fn (int $a, int $b): int => [$order[$b], $hits[$a]->manual, $hits[$a]->path] <=> [$order[$a], $hits[$b]->manual, $hits[$b]->path]);
+        $hits = array_map(static fn (int $key): SearchHit => $hits[$key], \array_slice($keys, 0, $limit));
 
-        return new SearchResult($query, \array_slice($hits, 0, $limit), $found, SearchResult::TYPESENSE);
+        return new SearchResult($query, $hits, $found, SearchResult::TYPESENSE);
     }
 
     /** The text's highlighted passage, as plain text: the page marks the words itself. */

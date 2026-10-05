@@ -78,7 +78,8 @@ final class FakeTypesense implements TypesenseClientInterface
                 $hits[] = [
                     'document' => array_diff_key($document, ['text' => true]),
                     'highlights' => [['field' => 'text', 'snippet' => preg_replace('/('.preg_quote((string) $search['q'], '/').')/i', '<mark>$1</mark>', mb_substr($text, $at, 80))]],
-                    'text_match' => str_contains(mb_strtolower((string) ($document['title'] ?? '')), mb_strtolower((string) $search['q'])) ? 200 : 100,
+                    // As the server scores: a 64-bit integer, the matched field's weight in its low bits.
+                    'text_match' => 578730123365187584 + (str_contains(mb_strtolower((string) ($document['title'] ?? '')), mb_strtolower((string) $search['q'])) ? 4 : 1),
                 ];
             }
             $results[] = ['found' => \count($hits), 'hits' => \array_slice($hits, 0, (int) ($search['per_page'] ?? 10))];
