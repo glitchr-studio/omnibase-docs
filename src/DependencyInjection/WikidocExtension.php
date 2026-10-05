@@ -10,6 +10,15 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 use Base\Bundle\AbstractBaseExtension;
 use Base\Wikidoc\Documentation\DocumentationRegistry;
+use Base\Wikidoc\Manual\ManualRegistry;
+use Base\Wikidoc\Manual\PageRenderer;
+use Base\Wikidoc\Search\BundleTypesenseClient;
+use Base\Wikidoc\Search\ManualIndex;
+use Base\Wikidoc\Search\TypesenseClientInterface;
+use Base\Wikidoc\Search\TypesenseIndex;
+use Base\Wikidoc\Site\Controller\ManualController;
+use Symfony\Component\DependencyInjection\Reference;
+use Typesense\Bundle\ORM\TypesenseManager;
 
 class WikidocExtension extends AbstractBaseExtension
 {
@@ -50,7 +59,54 @@ class WikidocExtension extends AbstractBaseExtension
 
         $container->getDefinition(DocumentationRegistry::class)->setArgument('$roots', $roots);
 
+        $this->loadManuals($config, $container);
+        unset($config['manuals'], $config['discover'], $config['discover_exclude']);
+
         $this->setConfiguration($container, $config, $configuration->getTreeBuilder()->buildTree()->getName());
+    }
+
+    /**
+     * The public manuals. Their paths are handed to the registry as they are
+     * written - an `%env(...)%` in one is resolved when the service is built,
+     * not when the container is compiled - and the folders are looked at
+     * when a page is asked for: a repository cloned, or a branch exported,
+     * after the last deployment is simply there.
+     *
+     * @param array<string, mixed> $config
+     */
+    protected function loadManuals(array $config, ContainerBuilder $container): void
+    {
+        $registry = $container->getDefinition(ManualRegistry::class);
+        $registry->setArgument('$configured', $config['manuals'] ?? []);
+        $registry->setArgument('$discover', array_values($config['discover'] ?? []));
+        $registry->setArgument('$options', [
+            'export_dir' => $config['export_dir'],
+            'branches' => $config['branches'],
+            'docs' => $config['docs'],
+            'readme' => \in_array($config['readme'], [false, 'false', '', null], true) ? false : $config['readme'],
+            'remote' => $config['remote'],
+            'cache_ttl' => $config['cache_ttl'],
+            'exclude' => array_values($config['discover_exclude'] ?? []),
+        ]);
+
+        $container->getDefinition(ManualIndex::class)->setArgument('$ttl', $config['cache_ttl']);
+        $container->getDefinition(PageRenderer::class)->setArgument('$editPattern', $config['edit_url']);
+
+        // The engine: only when it is asked for AND glitchr/typesense-bundle
+        // is there. Otherwise ManualSearch gets no TypesenseIndex, and the
+        // local index answers.
+        $typesense = $config['search']['typesense'];
+        if ($typesense['enabled'] && class_exists(TypesenseManager::class)) {
+            $container->register(BundleTypesenseClient::class, BundleTypesenseClient::class)
+                ->setArguments([new Reference('typesense_manager'), $typesense['connection']]);
+            $container->setAlias(TypesenseClientInterface::class, BundleTypesenseClient::class);
+            $container->register(TypesenseIndex::class, TypesenseIndex::class)
+                ->setArguments([new Reference(TypesenseClientInterface::class), new Reference(ManualIndex::class), $typesense['prefix']]);
+        }
+
+        if (!$config['public']['enabled']) {
+            $container->removeDefinition(ManualController::class);
+        }
     }
 
     protected function resolveParameters(ContainerBuilder $container, string $value): string

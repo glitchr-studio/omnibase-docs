@@ -1,35 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<!-- https://phpunit.de/manual/current/en/appendixes.configuration.html -->
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="http://schema.phpunit.de/6.1/phpunit.xsd"
-         backupGlobals="false"
-         colors="true"
-         bootstrap="vendor/autoload.php"
-         failOnRisky="true"
-         failOnWarning="true">
-    <php>
-        <ini name="error_reporting" value="-1" />
-        <ini name="intl.default_locale" value="en" />
-        <ini name="intl.error_level" value="0" />
-        <ini name="memory_limit" value="-1" />
-        <env name="SHELL_VERBOSITY" value="-1" />
-    </php>
-
-    <testsuites>
-        <testsuite name="Test Suite">
-            <directory>Tests</directory>
-        </testsuite>
-    </testsuites>
-
-    <filter>
-        <whitelist>
-            <directory>.</directory>
-            <exclude>
-                <directory>./Tests</directory>
-                <directory>./Resources</directory>
-                <directory>./vendor</directory>
-            </exclude>
-        </whitelist>
-    </filter>
+<!-- bootstrap="tests/bootstrap.php" rather than vendor/autoload.php: installed
+     inside a host application, that application's autoloader never picks up
+     this bundle's autoload-dev, so the bootstrap registers the test namespace
+     itself - the same dual-runner pattern as omnibase/blog and omnibase/forge. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" colors="true" bootstrap="tests/bootstrap.php" cacheResult="false">
+  <testsuites>
+    <testsuite name="unit">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+  <source>
+    <include>
+      <directory>src</directory>
+    </include>
+  </source>
 </phpunit>

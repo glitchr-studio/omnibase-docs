@@ -6,6 +6,17 @@ use Base\Wikidoc\Controller\Backend\ManualController;
 use Base\Wikidoc\Documentation\DocumentationRegistry;
 use Base\Wikidoc\Documentation\MarkdownRenderer;
 use Base\Wikidoc\Documentation\SearchIndexBuilder;
+use Base\Wikidoc\Command\IndexCommand;
+use Base\Wikidoc\Command\SyncCommand;
+use Base\Wikidoc\Manual\BranchExporter;
+use Base\Wikidoc\Manual\ManualMarkdownRenderer;
+use Base\Wikidoc\Manual\ManualRegistry;
+use Base\Wikidoc\Manual\PageRenderer;
+use Base\Wikidoc\Search\LocalSearch;
+use Base\Wikidoc\Search\ManualIndex;
+use Base\Wikidoc\Search\ManualSearch;
+use Base\Wikidoc\Search\TypesenseIndex;
+use Base\Wikidoc\Site\Controller\ManualController as PublicManualController;
 
 /*
  * This file is part of the Glitchr package.
@@ -63,6 +74,60 @@ return function (ContainerConfigurator $configurator) {
         'parameter_bag' => service('parameter_bag')->nullOnInvalid(),
         'web_link.http_header_serializer' => service('web_link.http_header_serializer')->nullOnInvalid(),
     ]);
+
+    // ---- The public manuals (docs/manuals.md) ------------------------------
+    // One manual per package, read in its repository, in one or several
+    // versions. The registry and the search are always there - a site may
+    // use them from its own controllers; WikidocExtension fills their
+    // arguments from `wikidoc.manuals`, `wikidoc.discover`..., registers the
+    // Typesense index when `wikidoc.search.typesense.enabled` is set, and
+    // removes the public controller unless `wikidoc.public.enabled` is.
+    $services->set(ManualRegistry::class)
+        ->args([[], [], [], service('cache.app')->nullOnInvalid()])
+        ->public(true);
+
+    $services->set(ManualMarkdownRenderer::class);
+
+    $services->set(PageRenderer::class)
+        ->args([service(ManualRegistry::class), service(ManualMarkdownRenderer::class), null]);
+
+    $services->set(ManualIndex::class)
+        ->args([service(ManualRegistry::class), service(MarkdownRenderer::class), service('cache.app')->nullOnInvalid(), 0]);
+
+    $services->set(LocalSearch::class)
+        ->args([service(ManualIndex::class)]);
+
+    $services->set(ManualSearch::class)
+        ->args([
+            service(ManualRegistry::class),
+            service(LocalSearch::class),
+            service(TypesenseIndex::class)->nullOnInvalid(),
+            service('logger')->nullOnInvalid(),
+        ])
+        ->public(true);
+
+    $services->set(BranchExporter::class)
+        ->args([service(ManualRegistry::class)]);
+
+    $services->set(SyncCommand::class)
+        ->args([service(ManualRegistry::class), service(BranchExporter::class)])
+        ->tag('console.command');
+
+    $services->set(IndexCommand::class)
+        ->args([service(ManualRegistry::class), service(ManualIndex::class), service(TypesenseIndex::class)->nullOnInvalid()])
+        ->tag('console.command');
+
+    $services->set(PublicManualController::class)
+        ->args([
+            service(ManualRegistry::class),
+            service(PageRenderer::class),
+            service(ManualMarkdownRenderer::class),
+            service(ManualSearch::class),
+            service('translator')->nullOnInvalid(),
+        ])
+        ->call('setContainer', [$controllerServiceLocator])
+        ->public(true)
+        ->tag('controller.service_arguments');
 
     if (class_exists('Base\\Admin\\Context\\AdminContext')) {
         $services->set(ManualController::class)

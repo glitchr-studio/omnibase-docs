@@ -1,0 +1,92 @@
+{#
+ # One page of a manual. The host's layout1.html.twig gives the chrome,
+ # manual.css the look (its colours and type are the site's: see the custom
+ # properties at its top), manual.js the palette, the copy buttons and the
+ # heading the reader is at.
+ #}
+{% extends 'layout1.html.twig' %}
+
+{% set default = manual.defaultVersion %}
+{% block title %}{{ page.path == '' ? manual.label : page.title ~ ' · ' ~ manual.label }} {{ version.name }}{% endblock %}
+{% block description %}{{ manual.description ?? '@wikidoc.manuals.description'|trans }}{% endblock %}
+
+{% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('bundles/wikidoc/css/manual.css') }}">{% endblock %}
+
+{% block content %}
+<div class="manual" data-manual-page>
+    <aside class="manual-side" id="manual-side">
+        <div class="manual-id">
+            <a class="manual-all" href="{{ path('wikidoc_index') }}">{{ '@wikidoc.manual.all'|trans }}</a>
+            <a class="manual-name" href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name)}) }}">{{ manual.label }}</a>
+            {% if versions|length > 1 %}
+            <details class="manual-versions">
+                <summary><span class="manual-versions-label">{{ '@wikidoc.manual.version'|trans }}</span> <b>{{ version.name }}</b></summary>
+                <ul>
+                    {% for v in versions %}
+                    <li><a href="{{ path('wikidoc_manual', {path: v.path}) }}"{% if v.version.name == version.name %} aria-current="true"{% endif %}{% if not v.same %} title="{{ '@wikidoc.manual.version_other'|trans({version: v.version.name}) }}"{% endif %}>{{ v.version.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </details>
+            {% else %}
+            <p class="manual-versions is-single"><span class="manual-versions-label">{{ '@wikidoc.manual.version'|trans }}</span> <b>{{ version.name }}</b></p>
+            {% endif %}
+        </div>
+        {% include '@Wikidoc/client/_search.html.twig' with {suffix: '-side'} %}
+        {% include '@Wikidoc/client/_tree.html.twig' %}
+    </aside>
+
+    <article class="manual-page">
+        <nav class="manual-crumbs" aria-label="{{ '@wikidoc.manual.breadcrumb'|trans }}">
+            <ol>
+                <li><a href="{{ path('wikidoc_index') }}">{{ '@wikidoc.manuals.title'|trans }}</a></li>
+                <li><a href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name)}) }}">{{ manual.label }}</a></li>
+                <li><span>{{ version.name }}</span></li>
+                {% for ancestor in ancestors %}
+                <li>{% if ancestor.isSection %}<span>{{ ancestor.title }}</span>{% else %}<a href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name, ancestor.path)}) }}">{{ ancestor.title }}</a>{% endif %}</li>
+                {% endfor %}
+                {% if page.path != '' %}<li aria-current="page"><span>{{ page.title }}</span></li>{% endif %}
+            </ol>
+            <button type="button" class="manual-menu-button" data-manual-menu aria-controls="manual-side" aria-expanded="false">{{ '@wikidoc.manual.menu'|trans }}</button>
+        </nav>
+
+        {% if default and default.name != version.name %}
+        <p class="manual-notice" role="note">
+            {{ '@wikidoc.manual.not_default'|trans({version: version.name, current: default.name}) }}
+            {% for v in versions|filter(v => v.version.name == default.name) %}<a href="{{ path('wikidoc_manual', {path: v.path}) }}">{{ '@wikidoc.manual.see_current'|trans({current: default.name}) }}</a>{% endfor %}
+        </p>
+        {% endif %}
+
+        <div class="manual-prose" data-text-copy="{{ '@wikidoc.manual.copy'|trans }}" data-text-copied="{{ '@wikidoc.manual.copied'|trans }}">
+            {% if not rendered.titled %}<h1>{{ page.title }}</h1>{% endif %}
+            {{ rendered.html|raw }}
+        </div>
+
+        <footer class="manual-foot">
+            {% if rendered.editUrl %}
+            <p class="manual-edit">
+                <a href="{{ rendered.editUrl }}" rel="noopener">{{ '@wikidoc.manual.edit'|trans }}</a>
+                <span class="manual-source">{{ '@wikidoc.manual.source'|trans }} : <a href="{{ rendered.sourceUrl }}" rel="noopener"><code>{{ rendered.source }}</code></a></span>
+            </p>
+            {% endif %}
+            <nav class="manual-neighbours" aria-label="{{ '@wikidoc.manual.previous'|trans }} / {{ '@wikidoc.manual.next'|trans }}">
+                {% if previous %}<a rel="prev" href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name, previous.path)}) }}"><small>{{ '@wikidoc.manual.previous'|trans }}</small><span>{{ previous.path == '' ? '@wikidoc.manual.home'|trans : previous.title }}</span></a>{% else %}<span></span>{% endif %}
+                {% if next %}<a rel="next" href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name, next.path)}) }}"><small>{{ '@wikidoc.manual.next'|trans }}</small><span>{{ next.title }}</span></a>{% endif %}
+            </nav>
+        </footer>
+    </article>
+
+    <aside class="manual-toc">
+        {% if rendered.headings|length > 1 %}
+        <nav aria-label="{{ '@wikidoc.manual.on_this_page'|trans }}">
+            <p class="manual-toc-title">{{ '@wikidoc.manual.on_this_page'|trans }}</p>
+            <ul>
+                {% for heading in rendered.headings|filter(h => h.level <= 3) %}
+                <li class="is-h{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+        {% endif %}
+    </aside>
+</div>
+<script src="{{ asset('bundles/wikidoc/js/manual.js') }}" defer></script>
+{% endblock %}

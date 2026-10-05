@@ -1,0 +1,6 @@
+{
+    "name": "acme/widget",
+    "description": "A widget, for the tests of omnibase/docs.",
+    "license": "MIT",
+    "support": {"source": "https://github.com/acme/widget"}
+}

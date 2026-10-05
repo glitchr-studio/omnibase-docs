@@ -72,8 +72,18 @@ class MarkdownRenderer
         $environment->addExtension(new AttributesExtension());
         $environment->addExtension(new HeadingPermalinkExtension());
         $environment->addExtension(new TableOfContentsExtension());
+        $this->configure($environment);
 
         return $this->converter = new MarkdownConverter($environment);
+    }
+
+    /**
+     * For a renderer that reads more than this one: its own extensions and
+     * listeners, added last. Nothing here - the back office's manual renders
+     * as it always did (see Base\Wikidoc\Manual\ManualMarkdownRenderer).
+     */
+    protected function configure(Environment $environment): void
+    {
     }
 
     /**

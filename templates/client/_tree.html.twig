@@ -1,0 +1,23 @@
+{# The manual's contents: its folders as sections, its pages as links; the branch of the current page is marked. #}
+{% macro nodes(pages, manual, version, current) %}
+    {% import _self as self %}
+    <ul>
+        {% for node in pages %}
+            <li{% if node.contains(current.path) %} class="is-open"{% endif %}>
+                {% if node.isSection %}
+                    <span class="manual-tree-section">{{ node.title }}</span>
+                {% else %}
+                    <a href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name, node.path)}) }}"{% if node.path == current.path %} aria-current="page"{% endif %}>{{ node.title }}</a>
+                {% endif %}
+                {% if node.children is not empty %}{{ self.nodes(node.children, manual, version, current) }}{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+{% import _self as self %}
+<nav class="manual-tree" aria-label="{{ '@wikidoc.manual.contents'|trans }}">
+    {% if home %}
+    <ul><li><a href="{{ path('wikidoc_manual', {path: manual.urlPath(version.name)}) }}"{% if page.path == '' %} aria-current="page"{% endif %}>{{ '@wikidoc.manual.home'|trans }}</a></li></ul>
+    {% endif %}
+    {{ self.nodes(tree, manual, version, page) }}
+</nav>

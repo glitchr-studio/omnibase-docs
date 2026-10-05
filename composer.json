@@ -1,9 +1,15 @@
 {
     "name": "omnibase/docs",
     "type": "symfony-bundle",
-    "description": "",
-    "keywords": ["symfony"],
-    "homepage": "https://symfony.com",
+    "description": "The documentation, read from Markdown files: a manual in the back office, and public manuals - one per package, read in its repository, one version per branch - with a search (Typesense, or the pages' own index).",
+    "keywords": [
+        "symfony",
+        "documentation",
+        "markdown",
+        "manual",
+        "omnibase"
+    ],
+    "homepage": "https://github.com/glitchr-studio/omnibase-docs",
     "license": "LGPL-3.0-or-later",
     "authors": [
         {
@@ -18,22 +24,30 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\Base\\Wikidoc\\": "./src/Tests"
+            "Base\\Wikidoc\\Tests\\": "./tests"
         }
     },
     "require": {
-        "php": "^8.0",
+        "php": "^8.1",
+        "glitchr/omnibase": "3.0.*-dev",
+        "league/commonmark": "^2.4",
         "symfony/config": "^6.0|^7.0|^8.0",
         "symfony/dependency-injection": "^6.0|^7.0|^8.0",
-        "symfony/http-kernel": "^6.0|^7.0|^8.0",
         "symfony/filesystem": "^6.0|^7.0|^8.0",
-        "glitchr/omnibase": "3.0.*-dev"
+        "symfony/finder": "^6.0|^7.0|^8.0",
+        "symfony/http-kernel": "^6.0|^7.0|^8.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^8.5",
+        "phpunit/phpunit": "^10.5|^11.0|^12.0",
         "symfony/framework-bundle": "^6.0|^7.0|^8.0",
-        "symfony/twig-bundle": "^6.0|^7.0|^8.0",
-        "symfony/var-dumper": "^6.0|^7.0|^8.0"
+        "symfony/process": "^6.0|^7.0|^8.0",
+        "symfony/twig-bundle": "^6.0|^7.0|^8.0"
+    },
+    "suggest": {
+        "glitchr/typesense-bundle": "The public manuals' search in Typesense (wikidoc.search.typesense); without it the pages' own index answers.",
+        "omnibase/admin": "The manual in the back office (/docs).",
+        "symfony/process": "wikidoc:sync: the documentation of the branches that are not checked out (needs the git binary).",
+        "tempest/highlight": "Colours the public manuals' code blocks on the server (PHP 8.4)."
     },
     "config": {
         "preferred-install": {

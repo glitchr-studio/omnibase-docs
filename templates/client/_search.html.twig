@@ -1,0 +1,24 @@
+{#
+ # The search field, and the palette manual.js opens over the page (Ctrl K,
+ # "/"). Without script the form simply goes to the results page.
+ # manual, version: the manual being read, if any - the search starts there.
+ #}
+{% set scoped = manual is defined and manual %}
+<form class="manual-search" role="search" action="{{ path('wikidoc_search') }}" method="get"
+      data-manual-search="{{ path('wikidoc_search') }}"
+      {% if scoped %}data-manual="{{ manual.key }}" data-version="{{ version.name }}" data-label="{{ manual.label }}"{% endif %}
+      data-text-everywhere="{{ '@wikidoc.search.everywhere'|trans }}"
+      data-text-none="{{ '@wikidoc.search.none'|trans({query: '%q%'}) }}"
+      data-text-hint="{{ '@wikidoc.search.hint'|trans }}"
+      data-text-typesense="{{ '@wikidoc.search.engine_typesense'|trans }}"
+      data-text-local="{{ '@wikidoc.search.engine_local'|trans }}">
+    <label class="manual-search-label" for="manual-q{{ suffix|default('') }}">{{ '@wikidoc.search.label'|trans }}</label>
+    <input id="manual-q{{ suffix|default('') }}" type="search" name="q" value="{{ query|default('') }}" autocomplete="off" spellcheck="false"
+           placeholder="{{ scoped ? '@wikidoc.search.placeholder_manual'|trans({manual: manual.label}) : '@wikidoc.search.placeholder'|trans }}">
+    {% if scoped %}
+        <input type="hidden" name="manual" value="{{ manual.key }}">
+        <input type="hidden" name="version" value="{{ version.name }}">
+    {% endif %}
+    <kbd class="manual-kbd" aria-hidden="true">{{ '@wikidoc.search.shortcut'|trans }}</kbd>
+    <button type="submit" class="manual-search-submit">{{ '@wikidoc.search.submit'|trans }}</button>
+</form>

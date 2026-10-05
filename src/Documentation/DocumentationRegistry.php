@@ -17,10 +17,15 @@ use Symfony\Component\Finder\Finder;
  * Hierarchy is the directory tree - no separate section concept, no ordering
  * table to maintain. A directory becomes a section; its index.md, if there
  * is one, becomes the section's own page rather than a child of it.
+ *
+ * A root may also name a `home` file kept outside its folder - a package's
+ * README beside its docs/ (see Base\Wikidoc\Manual\ManualRegistry): it is
+ * the home page when the folder has no index.md, and the page "readme"
+ * when it has one.
  */
 class DocumentationRegistry
 {
-    /** @var array<string, array{path: string, label: string}> */
+    /** @var array<string, array{path: string, label: string, home?: ?string}> */
     protected array $roots;
 
     protected ?DocPage $tree = null;
@@ -29,7 +34,7 @@ class DocumentationRegistry
     protected ?array $index = null;
 
     /**
-     * @param array<string, array{path: string, label: string}> $roots
+     * @param array<string, array{path: string, label: string, home?: ?string}> $roots
      *        keyed by root name, LOWEST priority first
      */
     public function __construct(array $roots = [])
@@ -97,6 +102,91 @@ class DocumentationRegistry
     }
 
     /**
+     * Every page in reading order - the home page, then the tree top to
+     * bottom, sections opened where they stand: what "previous" and "next"
+     * walk through.
+     *
+     * @return DocPage[]
+     */
+    public function getSequence(): array
+    {
+        $sequence = [];
+        if (null !== $home = $this->get('')) {
+            $sequence[] = $home;
+        }
+
+        $walk = static function (array $pages) use (&$walk, &$sequence): void {
+            foreach ($pages as $page) {
+                if (!$page->isSection()) {
+                    $sequence[] = $page;
+                }
+                $walk($page->children);
+            }
+        };
+        $walk($this->getTree());
+
+        return $sequence;
+    }
+
+    /**
+     * The page before and the page after `$page` in reading order.
+     *
+     * @return array{0: ?DocPage, 1: ?DocPage}
+     */
+    public function getNeighbours(DocPage $page): array
+    {
+        $sequence = $this->getSequence();
+        foreach ($sequence as $i => $candidate) {
+            if ($candidate->path === $page->path) {
+                return [$sequence[$i - 1] ?? null, $sequence[$i + 1] ?? null];
+            }
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * The sections and pages above `$page`, outermost first - its breadcrumb.
+     *
+     * @return DocPage[]
+     */
+    public function getAncestors(DocPage $page): array
+    {
+        $this->build();
+
+        $ancestors = [];
+        $segments = '' === $page->path ? [] : explode('/', $page->path);
+        array_pop($segments);
+        $path = '';
+        foreach ($segments as $segment) {
+            $path = ltrim($path.'/'.$segment, '/');
+            if (isset($this->index[$path])) {
+                $ancestors[] = $this->index[$path];
+            }
+        }
+
+        return $ancestors;
+    }
+
+    /** The page a Markdown file is rendered as, or null when the file is none of the manual's. */
+    public function findByFile(string $file): ?DocPage
+    {
+        $this->build();
+
+        $real = realpath($file);
+        if (false === $real) {
+            return null;
+        }
+        foreach ($this->index as $page) {
+            if ($page->file === $real) {
+                return $page;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Cheap fingerprint of every source file, so a caller can cache derived
      * work (the search index) and drop it the moment any file changes.
      */
@@ -155,7 +245,7 @@ class DocumentationRegistry
      * order, so a later root simply overwrites an earlier entry - and keeps
      * a note of the file it replaced.
      *
-     * @return array<string, array{file: string, root: string, mtime: int, supersedes: ?string}>
+     * @return array<string, array{file: string, root: string, mtime: int, supersedes: ?string, home?: bool}>
      */
     protected function collectFiles(): array
     {
@@ -179,6 +269,25 @@ class DocumentationRegistry
                     // Only set when this really replaces something already
                     // collected - not merely because a lower root exists.
                     'supersedes' => isset($files[$path]) ? $files[$path]['file'] : null,
+                ];
+            }
+        }
+
+        // A home file kept outside the folders (a package's README beside its
+        // docs/): the home page when no root has an index.md, else "readme".
+        foreach ($this->roots as $name => $root) {
+            $home = $root['home'] ?? null;
+            if (!\is_string($home) || '' === $home || !is_file($home)) {
+                continue;
+            }
+            $path = isset($files['']) ? 'readme' : '';
+            if (!isset($files[$path])) {
+                $files[$path] = [
+                    'file' => (string) realpath($home),
+                    'root' => $name,
+                    'mtime' => (int) filemtime($home),
+                    'supersedes' => null,
+                    'home' => true,
                 ];
             }
         }
@@ -251,7 +360,7 @@ class DocumentationRegistry
                 title: $meta['title'] ?? $this->humanize(basename($path)),
                 file: $found['file'] ?? null,
                 root: $found['root'] ?? '',
-                order: $meta['order'] ?? $this->orderFor(basename($path)),
+                order: $meta['order'] ?? (!empty($found['home']) ? -1 : $this->orderFor(basename($path))),
                 children: $this->assemble($path, $nodes),
                 supersedes: $found['supersedes'] ?? null,
             );

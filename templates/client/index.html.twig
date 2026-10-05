@@ -1,0 +1,33 @@
+{# Every manual, by name. A site with a catalogue of its own overrides this page (templates/bundles/WikidocBundle/client/index.html.twig). #}
+{% extends 'layout1.html.twig' %}
+
+{% block title %}{{ '@wikidoc.manuals.title'|trans }}{% endblock %}
+{% block description %}{{ '@wikidoc.manuals.description'|trans }}{% endblock %}
+
+{% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('bundles/wikidoc/css/manual.css') }}">{% endblock %}
+
+{% block content %}
+<section class="manual-index">
+    <header class="manual-index-head">
+        <h1>{{ '@wikidoc.manuals.title'|trans }}</h1>
+        <p>{{ '@wikidoc.manuals.lead'|trans }}</p>
+        {% include '@Wikidoc/client/_search.html.twig' with {suffix: '-index'} %}
+    </header>
+    {% if manuals is empty %}
+        <p class="manual-empty">{{ '@wikidoc.manuals.empty'|trans }}</p>
+    {% else %}
+    <ul class="manual-list">
+        {% for manual in manuals %}
+        <li>
+            <a class="manual-list-name" href="{{ path('wikidoc_manual', {path: manual.urlPath()}) }}">{{ manual.label }}</a>
+            {% if manual.description %}<p>{{ manual.description }}</p>{% endif %}
+            <p class="manual-list-versions">
+                {% for v in manual.versions %}<a href="{{ path('wikidoc_manual', {path: manual.urlPath(v.name)}) }}">{{ v.name }}</a>{% endfor %}
+            </p>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+<script src="{{ asset('bundles/wikidoc/js/manual.js') }}" defer></script>
+{% endblock %}

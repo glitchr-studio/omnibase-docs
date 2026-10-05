@@ -1,0 +1,52 @@
+{# The results of a search, rendered on the server: what the palette shows, as a page of its own. #}
+{% extends 'layout1.html.twig' %}
+
+{% block title %}{{ query ? '@wikidoc.search.title_query'|trans({query: query}) : '@wikidoc.search.title'|trans }}{% endblock %}
+{% block description %}{{ '@wikidoc.manuals.description'|trans }}{% endblock %}
+
+{% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('bundles/wikidoc/css/manual.css') }}">{% endblock %}
+
+{% macro marked(text, terms) %}
+    {%- set out = text|e -%}
+    {%- for term in terms -%}
+        {%- set out = out|replace({(term|e): '<mark>' ~ term|e ~ '</mark>', (term|capitalize|e): '<mark>' ~ term|capitalize|e ~ '</mark>', (term|upper|e): '<mark>' ~ term|upper|e ~ '</mark>'}) -%}
+    {%- endfor -%}
+    {{- out|raw -}}
+{% endmacro %}
+{% import _self as m %}
+
+{% block content %}
+<section class="manual-index manual-results" data-engine="{{ result.engine }}">
+    <header class="manual-index-head">
+        <p class="manual-crumb"><a href="{{ path('wikidoc_index') }}">{{ '@wikidoc.manuals.title'|trans }}</a></p>
+        <h1>{{ '@wikidoc.search.title'|trans }}</h1>
+        {% include '@Wikidoc/client/_search.html.twig' with {suffix: '-results'} %}
+        {% if manual %}
+        <p class="manual-scope">{{ '@wikidoc.search.in_manual'|trans({manual: manual.label, version: version.name}) }} · <a href="{{ path('wikidoc_search', {q: query}) }}">{{ '@wikidoc.search.everywhere'|trans }}</a></p>
+        {% endif %}
+    </header>
+
+    {% if query == '' %}
+        <p class="manual-empty">{{ '@wikidoc.search.hint'|trans }}</p>
+    {% else %}
+        <p class="manual-count"><b>{{ '@wikidoc.search.results'|trans({count: result.found}) }}</b> <span class="manual-engine">{{ ('@wikidoc.search.engine_' ~ result.engine)|trans }}</span></p>
+        {% if result.hits is empty %}
+            <p class="manual-empty">{{ '@wikidoc.search.none'|trans({query: query}) }}</p>
+        {% else %}
+        <ol class="manual-hits">
+            {% for hit in result.hits %}
+            <li>
+                <a href="{{ hit.url }}">
+                    <span class="manual-hit-where">{{ hit.label ?? hit.manual }} <i>{{ hit.version }}</i></span>
+                    <span class="manual-hit-title">{{ m.marked(hit.section ?? hit.title, terms) }}</span>
+                    {% if hit.section %}<span class="manual-hit-page">{{ hit.title }}</span>{% endif %}
+                    {% if hit.snippet %}<span class="manual-hit-text">{{ m.marked(hit.snippet, terms) }}</span>{% endif %}
+                </a>
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+    {% endif %}
+</section>
+<script src="{{ asset('bundles/wikidoc/js/manual.js') }}" defer></script>
+{% endblock %}
