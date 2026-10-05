@@ -86,11 +86,17 @@ final class ManualRegistryTest extends TestCase
         $location = $registry->resolve('acme/widget/1.x/installation');
         self::assertSame(['acme/widget', '1.x', 'installation', true], [$location->manual->name, $location->version->name, $location->path, $location->explicit]);
 
-        // No version, or "current": the default one, and the address says it was not spelled out.
+        // No version: the default one, and the address says it was not spelled out.
         $location = $registry->resolve('acme/widget/20-guides/webhooks');
         self::assertSame(['current', '20-guides/webhooks', false], [$location->version->name, $location->path, $location->explicit]);
+        // A version really called "current" (a folder that is no repository) is spelled out by that name...
         $location = $registry->resolve('acme/widget/current');
-        self::assertSame(['current', '', false], [$location->version->name, $location->path, $location->explicit]);
+        self::assertSame(['current', '', true], [$location->version->name, $location->path, $location->explicit]);
+        // ...and where no version is, "current" is only another word for the default one.
+        $named = Fixtures::registry([], ['acme/widget' => ['path' => Fixtures::REPOS.'/acme/widget', 'versions' => ['2.x' => Fixtures::REPOS.'/acme/widget', '1.x' => Fixtures::EXPORT.'/acme--widget/1.x']]], []);
+        $location = $named->resolve('acme/widget/current/installation');
+        self::assertSame(['2.x', 'installation', false], [$location->version->name, $location->path, $location->explicit]);
+        self::assertTrue($named->resolve('acme/widget/1.x/installation')->explicit);
 
         self::assertSame('', $registry->resolve('/acme/script/')->path);
         self::assertNull($registry->resolve('acme/unknown/1.x'));

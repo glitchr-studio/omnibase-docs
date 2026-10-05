@@ -92,9 +92,12 @@ class ManualRegistry
 
             $explicit = false;
             $version = $manual->getDefaultVersion();
-            if ([] !== $rest && ('current' === $rest[0] || isset($manual->versions[$rest[0]]))) {
-                $explicit = 'current' !== $rest[0];
-                $version = $manual->getVersion(array_shift($rest));
+            if ([] !== $rest && isset($manual->versions[$rest[0]])) {
+                // Spelled out - even when the version is itself called "current" (a folder that is no repository).
+                $explicit = true;
+                $version = $manual->versions[array_shift($rest)];
+            } elseif ([] !== $rest && 'current' === $rest[0]) {
+                array_shift($rest);
             }
             if (null === $version) {
                 return null;

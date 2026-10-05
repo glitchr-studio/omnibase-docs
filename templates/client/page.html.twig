@@ -6,13 +6,14 @@
  #}
 {% extends 'layout1.html.twig' %}
 
-{% set default = manual.defaultVersion %}
 {% block title %}{{ page.path == '' ? manual.label : page.title ~ ' · ' ~ manual.label }} {{ version.name }}{% endblock %}
 {% block description %}{{ manual.description ?? '@wikidoc.manuals.description'|trans }}{% endblock %}
 
 {% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('bundles/wikidoc/css/manual.css') }}">{% endblock %}
 
 {% block content %}
+{# The method, by name: "manual.defaultVersion" would read the property - the configured name, often null. #}
+{% set default = manual.getDefaultVersion() %}
 <div class="manual" data-manual-page>
     <aside class="manual-side" id="manual-side">
         <div class="manual-id">
@@ -52,7 +53,7 @@
         {% if default and default.name != version.name %}
         <p class="manual-notice" role="note">
             {{ '@wikidoc.manual.not_default'|trans({version: version.name, current: default.name}) }}
-            {% for v in versions|filter(v => v.version.name == default.name) %}<a href="{{ path('wikidoc_manual', {path: v.path}) }}">{{ '@wikidoc.manual.see_current'|trans({current: default.name}) }}</a>{% endfor %}
+            {% for v in versions %}{% if v.version.name == default.name %}<a href="{{ path('wikidoc_manual', {path: v.path}) }}">{{ '@wikidoc.manual.see_current'|trans({current: default.name}) }}</a>{% endif %}{% endfor %}
         </p>
         {% endif %}
 

@@ -117,7 +117,8 @@ wikidoc:
 ```
 
 Versions are listed newest first (`main` and `master` ahead, then `3.x`,
-`2.x`, `1.x`).
+`2.x`, `1.x`). A folder that is not a git repository has one version, named
+`current`.
 
 ## Addresses
 
